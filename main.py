@@ -18,6 +18,8 @@ handlers.profile.register(bot)
 handlers.dig.register(bot)
 handlers.tree.register(bot)
 handlers.chat.register(bot)
+handlers.inventory.register(bot)
+handlers.inventory.register_actions(bot)
 
 print("Bot started")
 bot.infinity_polling()
