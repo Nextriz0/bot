@@ -1,165 +1,161 @@
-from telebot import types
-from db.sqlite import get_user, update
-from game.economy import dig
+from aiogram import Router, types, F
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# ---------- OPEN INVENTORY ----------
-def register(bot):
+from db.sqlite import connect
 
-    @bot.message_handler(commands=["inventory", "inv"])
-    def inv(m):
-        u = get_user(m.from_user.id)
-
-        markup = types.InlineKeyboardMarkup(row_width=2)
-
-        markup.add(
-            types.InlineKeyboardButton(f"🦴 Кости ({u[2]})", callback_data="inv_bones"),
-            types.InlineKeyboardButton(f"🧴 Банки ({u[3]})", callback_data="inv_bottles"),
-        )
-
-        markup.add(
-            types.InlineKeyboardButton(f"🌫 Пыль ({u[4]})", callback_data="inv_dust"),
-        )
-
-        bot.send_message(m.chat.id, "🎒 Инвентарь:", reply_markup=markup)
-
-    # ---------- CALLBACK ROUTER ----------
-    @bot.callback_query_handler(func=lambda c: c.data.startswith("inv_"))
-    def inv_router(call):
-        u = get_user(call.from_user.id)
-
-        if call.data == "inv_bones":
-            show_bones(bot, call, u)
-
-        if call.data == "inv_bottles":
-            show_bottles(bot, call, u)
-
-        if call.data == "inv_dust":
-            show_dust(bot, call, u)
+router = Router()
 
 
-# ---------- BONES ----------
-def show_bones(bot, call, u):
-    markup = types.InlineKeyboardMarkup()
+# =========================
+# 🎒 КЛАВИАТУРА ИНВЕНТАРЯ
+# =========================
+def inventory_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🦴 Кости", callback_data="inv_bones")],
+        [InlineKeyboardButton(text="🧴 Бутылки", callback_data="inv_bottles")],
+        [InlineKeyboardButton(text="🌫 Пыль", callback_data="inv_dust")],
+        [InlineKeyboardButton(text="🧱 Кирпичи", callback_data="inv_bricks")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="menu")]
+    ])
 
-    markup.add(
-        types.InlineKeyboardButton("♻ Переработать", callback_data="bones_recycle"),
-        types.InlineKeyboardButton("💰 Продать", callback_data="bones_sell"),
-        types.InlineKeyboardButton("🔙 Назад", callback_data="inv_back")
+
+# =========================
+# 📦 ОТКРЫТИЕ ИНВЕНТАРЯ
+# =========================
+@router.message(commands=["inventory", "inv"])
+async def inventory(message: types.Message):
+    conn = connect()
+    cur = conn.cursor()
+
+    user = cur.execute("""
+        SELECT bones, bottles, dust, bricks
+        FROM users WHERE user_id=?
+    """, (message.from_user.id,)).fetchone()
+
+    conn.close()
+
+    if not user:
+        await message.answer("❌ Ты не зарегистрирован. /start")
+        return
+
+    bones, bottles, dust, bricks = user
+
+    text = (
+        "🎒 <b>Твой инвентарь:</b>\n\n"
+        f"🦴 Кости: {bones}\n"
+        f"🧴 Бутылки: {bottles}\n"
+        f"🌫 Пыль: {dust}\n"
+        f"🧱 Кирпичи: {bricks}\n"
     )
 
-    bot.edit_message_text(
-        f"🦴 Кости: {u[2]}",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=markup
-    )
+    await message.answer(text, reply_markup=inventory_kb(), parse_mode="HTML")
 
 
-# ---------- BOTTLES ----------
-def show_bottles(bot, call, u):
-    markup = types.InlineKeyboardMarkup()
+# =========================
+# 🦴 КОСТИ
+# =========================
+@router.callback_query(F.data == "inv_bones")
+async def bones_menu(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
 
-    markup.add(
-        types.InlineKeyboardButton("⭐ Использовать", callback_data="bottle_use"),
-        types.InlineKeyboardButton("💰 Продать", callback_data="bottle_sell"),
-        types.InlineKeyboardButton("🔙 Назад", callback_data="inv_back")
-    )
+    bones = cur.execute(
+        "SELECT bones FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()[0]
 
-    bot.edit_message_text(
-        f"🧴 Банки: {u[3]}",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=markup
-    )
+    conn.close()
 
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="♻ Переработать → Пыль (1:1)", callback_data="bones_to_dust")],
+        [InlineKeyboardButton(text="💰 Продать (1 = 5💰)", callback_data="bones_sell")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+    ])
 
-# ---------- DUST ----------
-def show_dust(bot, call, u):
-    markup = types.InlineKeyboardMarkup()
-
-    markup.add(
-        types.InlineKeyboardButton("🌳 Удобрить дерево", callback_data="dust_fert"),
-        types.InlineKeyboardButton("🔙 Назад", callback_data="inv_back")
-    )
-
-    bot.edit_message_text(
-        f"🌫 Пыль: {u[4]}",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=markup
+    await call.message.edit_text(
+        f"🦴 <b>Кости</b>\n\nКоличество: {bones}",
+        reply_markup=kb,
+        parse_mode="HTML"
     )
 
 
-# ---------- ACTIONS ----------
-def register_actions(bot):
+# =========================
+# 🧴 БУТЫЛКИ
+# =========================
+@router.callback_query(F.data == "inv_bottles")
+async def bottles_menu(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
 
-    @bot.callback_query_handler(func=lambda c: c.data == "inv_back")
-    def back(call):
-        inv(call.message)  # возвращаем меню
+    bottles = cur.execute(
+        "SELECT bottles FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()[0]
 
+    conn.close()
 
-    # 🦴 BONES
-    @bot.callback_query_handler(func=lambda c: c.data == "bones_recycle")
-    def recycle(call):
-        u = get_user(call.from_user.id)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⭐ Использовать (+рейтинг)", callback_data="bottle_use")],
+        [InlineKeyboardButton(text="💰 Продать (1 = 10💰)", callback_data="bottle_sell")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+    ])
 
-        if u[2] < 1:
-            return bot.answer_callback_query(call.id, "нет костей")
-
-        update(call.from_user.id, "bones", u[2] - 1)
-        update(call.from_user.id, "dust", u[4] + 1)
-
-        bot.answer_callback_query(call.id, "♻ +1 пыль")
-
-
-    @bot.callback_query_handler(func=lambda c: c.data == "bones_sell")
-    def sell_bones(call):
-        u = get_user(call.from_user.id)
-
-        if u[2] < 1:
-            return bot.answer_callback_query(call.id, "нет костей")
-
-        update(call.from_user.id, "bones", u[2] - 1)
-        update(call.from_user.id, "money", u[1] + 50)
-
-        bot.answer_callback_query(call.id, "💰 продано +50")
+    await call.message.edit_text(
+        f"🧴 <b>Бутылки</b>\n\nКоличество: {bottles}",
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
 
 
-    # 🧴 BOTTLES
-    @bot.callback_query_handler(func=lambda c: c.data == "bottle_use")
-    def use_bottle(call):
-        u = get_user(call.from_user.id)
+# =========================
+# 🌫 ПЫЛЬ
+# =========================
+@router.callback_query(F.data == "inv_dust")
+async def dust_menu(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
 
-        if u[3] < 1:
-            return bot.answer_callback_query(call.id, "нет банок")
+    dust = cur.execute(
+        "SELECT dust FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()[0]
 
-        update(call.from_user.id, "bottles", u[3] - 1)
-        update(call.from_user.id, "rating", u[7] + 1)
+    conn.close()
 
-        bot.answer_callback_query(call.id, "⭐ +1 рейтинг")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌳 Удобрить дерево (+рост)", callback_data="dust_tree")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+    ])
 
-
-    @bot.callback_query_handler(func=lambda c: c.data == "bottle_sell")
-    def sell_bottle(call):
-        u = get_user(call.from_user.id)
-
-        if u[3] < 1:
-            return bot.answer_callback_query(call.id, "нет банок")
-
-        update(call.from_user.id, "bottles", u[3] - 1)
-        update(call.from_user.id, "money", u[1] + 100)
-
-        bot.answer_callback_query(call.id, "💰 +100")
+    await call.message.edit_text(
+        f"🌫 <b>Пыль</b>\n\nКоличество: {dust}",
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
 
 
-    # 🌫 DUST
-    @bot.callback_query_handler(func=lambda c: c.data == "dust_fert")
-    def fertilize(call):
-        u = get_user(call.from_user.id)
+# =========================
+# 🧱 КИРПИЧИ
+# =========================
+@router.callback_query(F.data == "inv_bricks")
+async def bricks_menu(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
 
-        if u[4] < 1:
-            return bot.answer_callback_query(call.id, "нет пыли")
+    bricks = cur.execute(
+        "SELECT bricks FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()[0]
 
-        update(call.from_user.id, "dust", u[4] - 1)
+    conn.close()
 
-        bot.answer_callback_query(call.id, "🌳 дерево усилено")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💰 Продать (1 = 25💰)", callback_data="brick_sell")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+    ])
+
+    await call.message.edit_text(
+        f"🧱 <b>Кирпичи</b>\n\nКоличество: {bricks}",
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
