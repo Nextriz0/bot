@@ -159,3 +159,165 @@ async def bricks_menu(call: types.CallbackQuery):
         reply_markup=kb,
         parse_mode="HTML"
     )
+@router.callback_query(F.data == "bones_to_dust")
+async def bones_to_dust(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
+
+    user = cur.execute(
+        "SELECT bones, dust FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()
+
+    bones, dust = user
+
+    if bones <= 0:
+        await call.answer("❌ Нет костей")
+        return
+
+    bones -= 1
+    dust += 1
+
+    cur.execute("""
+        UPDATE users SET bones=?, dust=?
+        WHERE user_id=?
+    """, (bones, dust, call.from_user.id))
+
+    conn.commit()
+    conn.close()
+
+    await call.answer("♻ Переработано!")
+    @router.callback_query(F.data == "bones_sell")
+async def bones_sell(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
+
+    bones, money = cur.execute(
+        "SELECT bones, money FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()
+
+    if bones <= 0:
+        await call.answer("❌ Нет костей")
+        return
+
+    money += bones * 5
+    bones = 0
+
+    cur.execute("""
+        UPDATE users SET bones=?, money=?
+        WHERE user_id=?
+    """, (bones, money, call.from_user.id))
+
+    conn.commit()
+    conn.close()
+
+    await call.answer("💰 Продано!")
+    @router.callback_query(F.data == "bottle_use")
+async def bottle_use(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
+
+    bottles, rating = cur.execute(
+        "SELECT bottles, rating FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()
+
+    if bottles <= 0:
+        await call.answer("❌ Нет бутылок")
+        return
+
+    bottles -= 1
+    rating += 2
+
+    cur.execute("""
+        UPDATE users SET bottles=?, rating=?
+        WHERE user_id=?
+    """, (bottles, rating, call.from_user.id))
+
+    conn.commit()
+    conn.close()
+
+    await call.answer("⭐ +2 рейтинг")
+
+@router.callback_query(F.data == "dust_tree")
+async def dust_tree(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
+
+    dust, tree = cur.execute(
+        "SELECT dust, tree_growth FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()
+
+    if dust <= 0:
+        await call.answer("❌ Нет пыли")
+        return
+
+    dust -= 1
+    tree += 2
+
+    cur.execute("""
+        UPDATE users SET dust=?, tree_growth=?
+        WHERE user_id=?
+    """, (dust, tree, call.from_user.id))
+
+    conn.commit()
+    conn.close()
+
+    await call.answer("🌳 Дерево растёт!")
+
+@router.callback_query(F.data == "dust_tree")
+async def dust_tree(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
+
+    dust, tree = cur.execute(
+        "SELECT dust, tree_growth FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()
+
+    if dust <= 0:
+        await call.answer("❌ Нет пыли")
+        return
+
+    dust -= 1
+    tree += 2
+
+    cur.execute("""
+        UPDATE users SET dust=?, tree_growth=?
+        WHERE user_id=?
+    """, (dust, tree, call.from_user.id))
+
+    conn.commit()
+    conn.close()
+
+    await call.answer("🌳 Дерево растёт!")
+
+@router.callback_query(F.data == "brick_sell")
+async def brick_sell(call: types.CallbackQuery):
+    conn = connect()
+    cur = conn.cursor()
+
+    bricks, money = cur.execute(
+        "SELECT bricks, money FROM users WHERE user_id=?",
+        (call.from_user.id,)
+    ).fetchone()
+
+    if bricks <= 0:
+        await call.answer("❌ Нет кирпичей")
+        return
+
+    money += bricks * 25
+    bricks = 0
+
+    cur.execute("""
+        UPDATE users SET bricks=?, money=?
+        WHERE user_id=?
+    """, (bricks, money, call.from_user.id))
+
+    conn.commit()
+    conn.close()
+
+    await call.answer("💰 Кирпичи проданы!")
+
