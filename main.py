@@ -1,15 +1,28 @@
-import os
+import asyncio
+from aiogram import Bot, Dispatcher
+from config import BOT_TOKEN
+from db.sqlite import init_db
 
-TOKEN = os.environ.get("BOT_TOKEN")
+from handlers import start, profile, menu, dig, daily, tree, inventory, top, chat
 
-print("DEBUG TOKEN:", repr(TOKEN))
+async def main():
+    init_db()
 
-if TOKEN is None:
-    raise Exception("BOT_TOKEN NOT FOUND")
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher()
 
-import telebot
-bot = telebot.TeleBot(TOKEN)
+    dp.include_router(start.router)
+    dp.include_router(menu.router)
+    dp.include_router(profile.router)
+    dp.include_router(dig.router)
+    dp.include_router(daily.router)
+    dp.include_router(tree.router)
+    dp.include_router(inventory.router)
+    dp.include_router(top.router)
+    dp.include_router(chat.router)
 
-print("Bot started")
+    print("BOT STARTED")
+    await dp.start_polling(bot)
 
-bot.infinity_polling()
+if __name__ == "__main__":
+    asyncio.run(main())
