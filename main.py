@@ -1,9 +1,6 @@
 import os
-
-print("ENV BOT_TOKEN =", os.getenv("BOT_TOKEN"))
-
 import telebot
-from config import TOKEN
+
 from db.sqlite import init_db
 
 import handlers.start
@@ -12,6 +9,13 @@ import handlers.dig
 import handlers.tree
 import handlers.chat
 import handlers.inventory
+
+TOKEN = os.getenv("BOT_TOKEN")
+
+if not TOKEN:
+    raise Exception("BOT_TOKEN is missing")
+
+print("TOKEN OK")
 
 bot = telebot.TeleBot(TOKEN)
 
