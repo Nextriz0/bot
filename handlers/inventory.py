@@ -1,13 +1,11 @@
 from aiogram import Router, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
 from db.sqlite import connect
 
 router = Router()
 
-
 # =========================
-# 🎒 КЛАВИАТУРА ИНВЕНТАРЯ
+# 🎒 MENU
 # =========================
 def inventory_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -15,12 +13,11 @@ def inventory_kb():
         [InlineKeyboardButton(text="🧴 Бутылки", callback_data="inv_bottles")],
         [InlineKeyboardButton(text="🌫 Пыль", callback_data="inv_dust")],
         [InlineKeyboardButton(text="🧱 Кирпичи", callback_data="inv_bricks")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="menu")]
     ])
 
 
 # =========================
-# 📦 ОТКРЫТИЕ ИНВЕНТАРЯ
+# 📦 OPEN INVENTORY
 # =========================
 @router.message(commands=["inventory", "inv"])
 async def inventory(message: types.Message):
@@ -41,18 +38,18 @@ async def inventory(message: types.Message):
     bones, bottles, dust, bricks = user
 
     text = (
-        "🎒 <b>Твой инвентарь:</b>\n\n"
-        f"🦴 Кости: {bones}\n"
-        f"🧴 Бутылки: {bottles}\n"
-        f"🌫 Пыль: {dust}\n"
-        f"🧱 Кирпичи: {bricks}\n"
+        "🎒 <b>Инвентарь:</b>\n\n"
+        f"🦴 {bones}\n"
+        f"🧴 {bottles}\n"
+        f"🌫 {dust}\n"
+        f"🧱 {bricks}\n"
     )
 
     await message.answer(text, reply_markup=inventory_kb(), parse_mode="HTML")
 
 
 # =========================
-# 🦴 КОСТИ
+# 🦴 BONES MENU
 # =========================
 @router.callback_query(F.data == "inv_bones")
 async def bones_menu(call: types.CallbackQuery):
@@ -62,25 +59,28 @@ async def bones_menu(call: types.CallbackQuery):
     bones = cur.execute(
         "SELECT bones FROM users WHERE user_id=?",
         (call.from_user.id,)
-    ).fetchone()[0]
+    ).fetchone()
 
     conn.close()
 
+    if not bones:
+        await call.answer("❌ ошибка")
+        return
+
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="♻ Переработать → Пыль (1:1)", callback_data="bones_to_dust")],
-        [InlineKeyboardButton(text="💰 Продать (1 = 5💰)", callback_data="bones_sell")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+        [InlineKeyboardButton(text="♻ → Пыль", callback_data="bones_to_dust")],
+        [InlineKeyboardButton(text="💰 Продать", callback_data="bones_sell")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv_back")]
     ])
 
     await call.message.edit_text(
-        f"🦴 <b>Кости</b>\n\nКоличество: {bones}",
-        reply_markup=kb,
-        parse_mode="HTML"
+        f"🦴 Кости: {bones[0]}",
+        reply_markup=kb
     )
 
 
 # =========================
-# 🧴 БУТЫЛКИ
+# 🧴 BOTTLES
 # =========================
 @router.callback_query(F.data == "inv_bottles")
 async def bottles_menu(call: types.CallbackQuery):
@@ -95,20 +95,19 @@ async def bottles_menu(call: types.CallbackQuery):
     conn.close()
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⭐ Использовать (+рейтинг)", callback_data="bottle_use")],
-        [InlineKeyboardButton(text="💰 Продать (1 = 10💰)", callback_data="bottle_sell")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+        [InlineKeyboardButton(text="⭐ Использовать", callback_data="bottle_use")],
+        [InlineKeyboardButton(text="💰 Продать", callback_data="bottle_sell")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv_back")]
     ])
 
     await call.message.edit_text(
-        f"🧴 <b>Бутылки</b>\n\nКоличество: {bottles}",
-        reply_markup=kb,
-        parse_mode="HTML"
+        f"🧴 Бутылки: {bottles}",
+        reply_markup=kb
     )
 
 
 # =========================
-# 🌫 ПЫЛЬ
+# 🌫 DUST
 # =========================
 @router.callback_query(F.data == "inv_dust")
 async def dust_menu(call: types.CallbackQuery):
@@ -123,19 +122,18 @@ async def dust_menu(call: types.CallbackQuery):
     conn.close()
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🌳 Удобрить дерево (+рост)", callback_data="dust_tree")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+        [InlineKeyboardButton(text="🌳 Удобрить", callback_data="dust_tree")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv_back")]
     ])
 
     await call.message.edit_text(
-        f"🌫 <b>Пыль</b>\n\nКоличество: {dust}",
-        reply_markup=kb,
-        parse_mode="HTML"
+        f"🌫 Пыль: {dust}",
+        reply_markup=kb
     )
 
 
 # =========================
-# 🧱 КИРПИЧИ
+# 🧱 BRICKS
 # =========================
 @router.callback_query(F.data == "inv_bricks")
 async def bricks_menu(call: types.CallbackQuery):
@@ -150,44 +148,60 @@ async def bricks_menu(call: types.CallbackQuery):
     conn.close()
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💰 Продать (1 = 25💰)", callback_data="brick_sell")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv")]
+        [InlineKeyboardButton(text="💰 Продать", callback_data="brick_sell")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="inv_back")]
     ])
 
     await call.message.edit_text(
-        f"🧱 <b>Кирпичи</b>\n\nКоличество: {bricks}",
-        reply_markup=kb,
-        parse_mode="HTML"
+        f"🧱 Кирпичи: {bricks}",
+        reply_markup=kb
     )
+
+
+# =========================
+# 🔙 BACK
+# =========================
+@router.callback_query(F.data == "inv_back")
+async def back(call: types.CallbackQuery):
+    await call.message.edit_text(
+        "🎒 Инвентарь:",
+        reply_markup=inventory_kb()
+    )
+
+
+# =========================
+# ♻ BONES → DUST
+# =========================
 @router.callback_query(F.data == "bones_to_dust")
 async def bones_to_dust(call: types.CallbackQuery):
     conn = connect()
     cur = conn.cursor()
 
-    user = cur.execute(
+    bones, dust = cur.execute(
         "SELECT bones, dust FROM users WHERE user_id=?",
         (call.from_user.id,)
     ).fetchone()
 
-    bones, dust = user
-
     if bones <= 0:
-        await call.answer("❌ Нет костей")
+        await call.answer("❌ нет костей")
         return
 
-    bones -= 1
-    dust += 1
-
     cur.execute("""
-        UPDATE users SET bones=?, dust=?
+        UPDATE users
+        SET bones=bones-1, dust=dust+1
         WHERE user_id=?
-    """, (bones, dust, call.from_user.id))
+    """, (call.from_user.id,))
 
     conn.commit()
     conn.close()
 
-    await call.answer("♻ Переработано!")
-    @router.callback_query(F.data == "bones_sell")
+    await call.answer("♻ сделано")
+
+
+# =========================
+# 💰 SELL BONES
+# =========================
+@router.callback_query(F.data == "bones_sell")
 async def bones_sell(call: types.CallbackQuery):
     conn = connect()
     cur = conn.cursor()
@@ -198,22 +212,25 @@ async def bones_sell(call: types.CallbackQuery):
     ).fetchone()
 
     if bones <= 0:
-        await call.answer("❌ Нет костей")
+        await call.answer("❌ нет костей")
         return
 
-    money += bones * 5
-    bones = 0
-
     cur.execute("""
-        UPDATE users SET bones=?, money=?
+        UPDATE users
+        SET bones=0, money=money + ?
         WHERE user_id=?
-    """, (bones, money, call.from_user.id))
+    """, (bones * 5, call.from_user.id))
 
     conn.commit()
     conn.close()
 
-    await call.answer("💰 Продано!")
-    @router.callback_query(F.data == "bottle_use")
+    await call.answer("💰 продано")
+
+
+# =========================
+# ⭐ BOTTLE USE
+# =========================
+@router.callback_query(F.data == "bottle_use")
 async def bottle_use(call: types.CallbackQuery):
     conn = connect()
     cur = conn.cursor()
@@ -224,22 +241,24 @@ async def bottle_use(call: types.CallbackQuery):
     ).fetchone()
 
     if bottles <= 0:
-        await call.answer("❌ Нет бутылок")
+        await call.answer("❌ нет бутылок")
         return
 
-    bottles -= 1
-    rating += 2
-
     cur.execute("""
-        UPDATE users SET bottles=?, rating=?
+        UPDATE users
+        SET bottles=bottles-1, rating=rating+2
         WHERE user_id=?
-    """, (bottles, rating, call.from_user.id))
+    """, (call.from_user.id,))
 
     conn.commit()
     conn.close()
 
-    await call.answer("⭐ +2 рейтинг")
+    await call.answer("⭐ +2")
 
+
+# =========================
+# 🌳 DUST → TREE
+# =========================
 @router.callback_query(F.data == "dust_tree")
 async def dust_tree(call: types.CallbackQuery):
     conn = connect()
@@ -251,49 +270,24 @@ async def dust_tree(call: types.CallbackQuery):
     ).fetchone()
 
     if dust <= 0:
-        await call.answer("❌ Нет пыли")
+        await call.answer("❌ нет пыли")
         return
 
-    dust -= 1
-    tree += 2
-
     cur.execute("""
-        UPDATE users SET dust=?, tree_growth=?
+        UPDATE users
+        SET dust=dust-1, tree_growth=tree_growth+2
         WHERE user_id=?
-    """, (dust, tree, call.from_user.id))
+    """, (call.from_user.id,))
 
     conn.commit()
     conn.close()
 
-    await call.answer("🌳 Дерево растёт!")
+    await call.answer("🌳 рост")
 
-@router.callback_query(F.data == "dust_tree")
-async def dust_tree(call: types.CallbackQuery):
-    conn = connect()
-    cur = conn.cursor()
 
-    dust, tree = cur.execute(
-        "SELECT dust, tree_growth FROM users WHERE user_id=?",
-        (call.from_user.id,)
-    ).fetchone()
-
-    if dust <= 0:
-        await call.answer("❌ Нет пыли")
-        return
-
-    dust -= 1
-    tree += 2
-
-    cur.execute("""
-        UPDATE users SET dust=?, tree_growth=?
-        WHERE user_id=?
-    """, (dust, tree, call.from_user.id))
-
-    conn.commit()
-    conn.close()
-
-    await call.answer("🌳 Дерево растёт!")
-
+# =========================
+# 🧱 BRICK SELL
+# =========================
 @router.callback_query(F.data == "brick_sell")
 async def brick_sell(call: types.CallbackQuery):
     conn = connect()
@@ -305,19 +299,16 @@ async def brick_sell(call: types.CallbackQuery):
     ).fetchone()
 
     if bricks <= 0:
-        await call.answer("❌ Нет кирпичей")
+        await call.answer("❌ нет кирпичей")
         return
 
-    money += bricks * 25
-    bricks = 0
-
     cur.execute("""
-        UPDATE users SET bricks=?, money=?
+        UPDATE users
+        SET bricks=0, money=money + ?
         WHERE user_id=?
-    """, (bricks, money, call.from_user.id))
+    """, (bricks * 25, call.from_user.id))
 
     conn.commit()
     conn.close()
 
-    await call.answer("💰 Кирпичи проданы!")
-
+    await call.answer("💰 продано")
