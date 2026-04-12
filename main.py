@@ -1,3 +1,7 @@
+import os
+
+print("ENV BOT_TOKEN =", os.getenv("BOT_TOKEN"))
+
 import telebot
 from config import TOKEN
 from db.sqlite import init_db
