@@ -7,6 +7,7 @@ import handlers.profile
 import handlers.dig
 import handlers.tree
 import handlers.chat
+import handlers.inventory
 
 bot = telebot.TeleBot(TOKEN)
 
