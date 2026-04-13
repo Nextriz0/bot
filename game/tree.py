@@ -1,27 +1,47 @@
-import random
 import time
+import random
+from telebot import types
 from db.sqlite import get_user, update
 
-def water_tree(user_id):
-    user = get_user(user_id)
-    now = int(time.time())
+COOLDOWN = 14400  # 4 часа
 
-    if now - user[6] < 14400:
-        return None
+def register(bot):
 
-    grow = round(random.uniform(0.1, 1.5), 2)
+    @bot.message_handler(commands=['tree'])
+    def tree(m):
+        markup = types.InlineKeyboardMarkup()
 
-    update(user_id, "tree", user[5] + grow)
-    update(user_id, "last_water", now)
+        markup.add(
+            types.InlineKeyboardButton("💧 Полить", callback_data="tree_water"),
+            types.InlineKeyboardButton("🌱 Удобрить", callback_data="tree_fert")
+        )
 
-    return grow
+        bot.send_message(m.chat.id, "🌳 Дерево", reply_markup=markup)
 
 
-def fertilize(user_id):
-    user = get_user(user_id)
+    @bot.callback_query_handler(func=lambda c: c.data.startswith("tree_"))
+    def tree_actions(call):
+        u = get_user(call.from_user.id)
+        now = int(time.time())
 
-    if user[4] < 1:
-        return False
+        # 💧 Полив
+        if call.data == "tree_water":
+            if now - u[6] < COOLDOWN:
+                return bot.answer_callback_query(call.id, "⏳ Рано")
 
-    update(user_id, "dust", user[4] - 1)
-    return True
+            grow = random.randint(1, 5)
+            update(call.from_user.id, "tree", u[5] + grow)
+            update(call.from_user.id, "last_tree", now)
+
+            bot.answer_callback_query(call.id, f"🌳 +{grow}м")
+
+        # 🌱 Удобрение
+        if call.data == "tree_fert":
+            if u[4] < 1:
+                return bot.answer_callback_query(call.id, "Нет пыли")
+
+            grow = random.randint(2, 6)
+            update(call.from_user.id, "dust", u[4] - 1)
+            update(call.from_user.id, "tree", u[5] + grow)
+
+            bot.answer_callback_query(call.id, f"🌱 +{grow}м")
