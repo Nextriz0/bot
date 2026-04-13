@@ -1,18 +1,17 @@
-from db.sqlite import get_user
+from db import get_user
 
 def register(bot):
-
-    @bot.message_handler(commands=["profile"])
+    @bot.message_handler(commands=['profile'])
     def profile(m):
         u = get_user(m.from_user.id)
 
-        bot.send_message(m.chat.id,
-        f"""👤 Профиль
+        text = f"""
+👤 Профиль
 
-💰 {u[1]}
-🦴 {u[2]}
-🧴 {u[3]}
-🌫 {u[4]}
-🌳 {u[5]} м
-⭐ {u[7]}
-""")
+💰 Деньги: {u[1]}
+🦴 Кости: {u[2]}
+🧴 Банки: {u[3]}
+🌫 Пыль: {u[4]}
+"""
+
+        bot.send_message(m.chat.id, text)
