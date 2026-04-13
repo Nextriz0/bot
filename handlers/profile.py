@@ -1,4 +1,4 @@
-from db import get_user
+from db.sqlite import get_user, update
 
 def register(bot):
     @bot.message_handler(commands=['profile'])
