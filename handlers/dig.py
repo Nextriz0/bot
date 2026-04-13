@@ -1,5 +1,5 @@
 import random
-from db import get_user, update
+from db.sqlite import get_user, update
 
 def register(bot):
     @bot.message_handler(commands=['dig'])
