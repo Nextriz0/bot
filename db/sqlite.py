@@ -5,14 +5,18 @@ def init_db():
     cur = conn.cursor()
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY,
-        money INTEGER DEFAULT 0,
-        bones INTEGER DEFAULT 0,
-        bottles INTEGER DEFAULT 0,
-        dust INTEGER DEFAULT 0
-    )
-    """)
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    money INTEGER DEFAULT 0,
+    bones INTEGER DEFAULT 0,
+    bottles INTEGER DEFAULT 0,
+    dust INTEGER DEFAULT 0,
+    tree INTEGER DEFAULT 0,
+    last_tree INTEGER DEFAULT 0,
+    last_daily INTEGER DEFAULT 0,
+    messages INTEGER DEFAULT 0
+)
+""")
 
     conn.commit()
     conn.close()
