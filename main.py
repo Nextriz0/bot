@@ -6,6 +6,10 @@ import handlers.start as start
 import handlers.profile as profile
 import handlers.dig as dig
 import handlers.inventory as inventory
+import handlers.tree as tree
+import handlers.daily as daily
+import handlers.chat as chat
+import handlers.top as top
 
 TOKEN = os.getenv("BOT_TOKEN")
 
