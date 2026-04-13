@@ -1,6 +1,6 @@
 import os
 import telebot
-from db import init_db
+from db.sqlite import init_db
 
 import handlers.start as start
 import handlers.profile as profile
