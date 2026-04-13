@@ -1,5 +1,5 @@
 from telebot import types
-from db import get_user, update
+from db.sqlite import get_user, update
 
 def register(bot):
 
